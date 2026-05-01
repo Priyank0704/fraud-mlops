@@ -1,0 +1,32 @@
+# docker-compose.yml
+#
+# WHY docker-compose:
+#   Single command to build + run the container locally.
+#   In production you'd use Kubernetes, but compose is
+#   standard for local development and portfolio demos.
+#
+# Usage:
+#   docker-compose up --build     # build and start
+#   docker-compose down           # stop and remove
+
+version: "3.8"
+
+services:
+  fraud-api:
+    build: .
+    container_name: fraud-detection-api
+    ports:
+      - "8000:8000"       # host:container
+    volumes:
+      # Mount models dir so you can update the model without rebuilding
+      - ./models:/app/models:ro    # read-only mount
+    environment:
+      - PYTHONUNBUFFERED=1         # ensures logs appear immediately
+    restart: unless-stopped        # auto-restart on crash
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

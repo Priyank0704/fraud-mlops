@@ -1,0 +1,93 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Job 1: Run tests ────────────────────────────────────────
+  test:
+    name: Run pytest
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools==67.8.0
+          pip install -r requirements.txt
+
+      - name: Create mock model artefacts for tests
+        # Tests use mocks but model_meta.json is read at import time.
+        # We create a minimal version so imports don't fail in CI.
+        run: |
+          mkdir -p models
+          python -c "
+          import json, pathlib
+          meta = {
+            'threshold': 0.728,
+            'feature_names': [f'feature_{i}' for i in range(377)],
+            'metrics': {'auc_roc': 0.9676, 'auc_pr': 0.8208, 'f1': 0.771},
+            'run_id': 'ci-mock-run'
+          }
+          pathlib.Path('models/model_meta.json').write_text(json.dumps(meta))
+          "
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v --cov=src/api --cov-report=term-missing
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: .coverage
+
+  # ── Job 2: Build and push Docker image ──────────────────────
+  # WHY needs: test — broken code can never reach production.
+  # Tests must pass before Docker build even starts.
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/fraud-detection-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/fraud-detection-api:${{ github.sha }}
+
+  # ── Job 3: Deploy to Render ─────────────────────────────────
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Trigger Render deploy hook
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"

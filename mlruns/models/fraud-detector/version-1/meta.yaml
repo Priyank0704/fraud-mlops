@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1777304644188
+current_stage: None
+description: null
+last_updated_timestamp: 1777304644188
+name: fraud-detector
+run_id: ef6a3c77266748958a91a3e13ff8d668
+run_link: null
+source: file:C:/Users/priya/fraud-mlops/mlruns/991035478042482579/ef6a3c77266748958a91a3e13ff8d668/artifacts/fraud_model
+status: READY
+status_message: null
+storage_location: file:C:/Users/priya/fraud-mlops/mlruns/991035478042482579/ef6a3c77266748958a91a3e13ff8d668/artifacts/fraud_model
+user_id: null
+version: 1

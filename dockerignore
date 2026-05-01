@@ -1,0 +1,35 @@
+# WHY .dockerignore:
+#   Like .gitignore but for Docker. Prevents large files from
+#   being sent to the Docker build context, making builds faster.
+
+# Python
+__pycache__/
+*.py[cod]
+.eggs/
+venv/
+.env
+
+# Data — never ship training data in your Docker image
+data/
+
+# Notebooks
+notebooks/
+*.ipynb
+
+# MLflow runs — large, not needed at inference
+mlruns/
+mlartifacts/
+
+# Tests — not needed in production image
+tests/
+
+# Git
+.git/
+.github/
+
+# Reports
+reports/
+
+# IDE
+.vscode/
+.idea/

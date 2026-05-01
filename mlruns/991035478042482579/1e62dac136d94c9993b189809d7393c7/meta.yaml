@@ -1,0 +1,15 @@
+artifact_uri: file:C:/Users/priya/fraud-mlops/mlruns/991035478042482579/1e62dac136d94c9993b189809d7393c7/artifacts
+end_time: 1777304104608
+entry_point_name: ''
+experiment_id: '991035478042482579'
+lifecycle_stage: active
+run_id: 1e62dac136d94c9993b189809d7393c7
+run_name: trial_15
+run_uuid: 1e62dac136d94c9993b189809d7393c7
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777304104531
+status: 3
+tags: []
+user_id: priya
