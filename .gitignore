@@ -34,3 +34,7 @@ Thumbs.db
 
 # Reports (generated)
 reports/*.html
+data/raw/*.csv 
+data/raw/*.zip 
+data/processed/*.parquet 
+venv/ 
