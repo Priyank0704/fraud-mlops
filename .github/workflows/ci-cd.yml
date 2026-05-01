@@ -24,38 +24,44 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip setuptools==67.8.0
+          pip install --upgrade pip "setuptools==67.8.0"
           pip install -r requirements.txt
 
-      - name: Create mock model artefacts for tests
-        # Tests use mocks but model_meta.json is read at import time.
-        # We create a minimal version so imports don't fail in CI.
+      - name: Create mock model artefacts
         run: |
-          mkdir -p models
-          python -c "
-          import json, pathlib
+          mkdir -p models data/processed
+          python - <<'EOF'
+          import json, pathlib, joblib, numpy as np
+          from sklearn.pipeline import Pipeline
+          from sklearn.preprocessing import StandardScaler
+
+          # model_meta.json
           meta = {
-            'threshold': 0.728,
-            'feature_names': [f'feature_{i}' for i in range(377)],
-            'metrics': {'auc_roc': 0.9676, 'auc_pr': 0.8208, 'f1': 0.771},
-            'run_id': 'ci-mock-run'
+            "threshold": 0.728,
+            "feature_names": [f"feature_{i}" for i in range(377)],
+            "metrics": {"auc_roc": 0.9676, "auc_pr": 0.8208, "f1": 0.771},
+            "run_id": "ci-mock-run"
           }
-          pathlib.Path('models/model_meta.json').write_text(json.dumps(meta))
-          "
+          pathlib.Path("models/model_meta.json").write_text(json.dumps(meta))
 
-      - name: Run tests with coverage
-        run: |
-          pytest tests/ -v --cov=src/api --cov-report=term-missing
+          # preprocessor.pkl
+          artefacts = {
+            "preprocessor": Pipeline([("scaler", StandardScaler())]),
+            "target_encoder": None,
+            "drop_cols": [],
+            "col_types": {
+              "numeric": [f"feature_{i}" for i in range(377)],
+              "low_card_cat": []
+            }
+          }
+          joblib.dump(artefacts, "models/preprocessor.pkl")
+          print("Mock artefacts created successfully")
+          EOF
 
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: .coverage
+      - name: Run tests
+        run: pytest tests/ -v --cov=src/api --cov-report=term-missing
 
   # ── Job 2: Build and push Docker image ──────────────────────
-  # WHY needs: test — broken code can never reach production.
-  # Tests must pass before Docker build even starts.
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
@@ -71,6 +77,30 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Create minimal model artefacts for Docker build
+        run: |
+          mkdir -p models
+          python - <<'EOF'
+          import json, pathlib, joblib
+          from sklearn.pipeline import Pipeline
+          from sklearn.preprocessing import StandardScaler
+
+          meta = {
+            "threshold": 0.728,
+            "feature_names": [f"feature_{i}" for i in range(377)],
+            "metrics": {"auc_roc": 0.9676, "auc_pr": 0.8208, "f1": 0.771},
+            "run_id": "ci-mock-run"
+          }
+          pathlib.Path("models/model_meta.json").write_text(json.dumps(meta))
+          artefacts = {
+            "preprocessor": Pipeline([("scaler", StandardScaler())]),
+            "target_encoder": None,
+            "drop_cols": [],
+            "col_types": {"numeric": [f"feature_{i}" for i in range(377)], "low_card_cat": []}
+          }
+          joblib.dump(artefacts, "models/preprocessor.pkl")
+          EOF
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -91,3 +121,5 @@ jobs:
     steps:
       - name: Trigger Render deploy hook
         run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
