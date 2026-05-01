@@ -34,8 +34,8 @@ jobs:
           import json, pathlib, joblib, numpy as np
           from sklearn.pipeline import Pipeline
           from sklearn.preprocessing import StandardScaler
+          from unittest.mock import MagicMock
 
-          # model_meta.json
           meta = {
             "threshold": 0.728,
             "feature_names": [f"feature_{i}" for i in range(377)],
@@ -44,7 +44,14 @@ jobs:
           }
           pathlib.Path("models/model_meta.json").write_text(json.dumps(meta))
 
-          # preprocessor.pkl
+          from xgboost import XGBClassifier
+          import pandas as pd
+          mock_model = XGBClassifier(n_estimators=1, max_depth=1)
+          X = pd.DataFrame(np.zeros((10, 377)), columns=[f"feature_{i}" for i in range(377)])
+          y = np.array([0]*9 + [1])
+          mock_model.fit(X, y)
+          joblib.dump(mock_model, "models/best_model.pkl")
+
           artefacts = {
             "preprocessor": Pipeline([("scaler", StandardScaler())]),
             "target_encoder": None,
@@ -55,7 +62,7 @@ jobs:
             }
           }
           joblib.dump(artefacts, "models/preprocessor.pkl")
-          print("Mock artefacts created successfully")
+          print("All mock artefacts created successfully")
           EOF
 
       - name: Run tests
