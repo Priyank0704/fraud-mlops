@@ -11,11 +11,6 @@ data/raw/*.csv
 data/processed/*.parquet
 data/processed/*.csv
 
-# Models — tracked by DVC or MLflow
-models/*.pkl
-models/*.joblib
-models/*.json
-
 # MLflow
 mlruns/
 mlartifacts/
